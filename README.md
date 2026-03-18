@@ -5,7 +5,7 @@
 ## 주요 기능
 
 ### 학생
-- 교육 과정 선택 후 이름 + 비밀번호로 로그인
+- 이름 + 비밀번호만으로 로그인 (교육 과정 자동 감지)
 - 본인을 제외한 팀원에 대해 매일 5점 척도 평가
   - 회의 참석 여부
   - 실질 기여 여부
@@ -17,7 +17,7 @@
 - 좌측 하단 **?** 버튼으로 사용 가이드 확인
 
 ### 관리자
-- **과정 관리**: 코호트 추가/비활성화, `students.json` 업로드
+- **과정 관리**: 코호트 추가/비활성화, `students.json` 업로드, 과정별 등록 학생 수 확인
 - **프로젝트 관리**: 프로젝트 생성, 팀 구성 (드래그앤드롭 + 균등 배분)
 - **대시보드**: 제출 현황 도넛 차트, 팀별/학생별 평균 바 차트, 학생 상세 일별 추이, CSV 다운로드
 - 대시보드에서 **평가자별 상세 점수 열람 가능** (학생 간에는 익명)
@@ -260,7 +260,7 @@ az webapp up \
 
 | Method | Endpoint | Auth | 설명 | Request Body |
 |--------|----------|------|------|-------------|
-| `POST` | `/api/auth/login` | - | 학생 로그인 | `{cohort_id, name, password}` |
+| `POST` | `/api/auth/login` | - | 학생 로그인 | `{name, password}` |
 | `POST` | `/api/auth/admin-login` | - | 관리자 로그인 | `{password}` |
 | `POST` | `/api/auth/logout` | any | 로그아웃 | - |
 | `GET` | `/api/auth/status` | any | 세션 상태 확인 | - |
@@ -269,12 +269,13 @@ az webapp up \
 ```json
 {"success": true, "student_id": 1, "student_name": "홍길동", "cohort_id": "DT4"}
 ```
+> `cohort_id`는 서버에서 이름+비밀번호 매칭으로 자동 감지되어 반환됩니다. 활성 과정만 검색 대상입니다.
 
 ### 코호트 (Cohort)
 
 | Method | Endpoint | Auth | 설명 | Request Body / Params |
 |--------|----------|------|------|-----------------------|
-| `GET` | `/api/cohorts` | any | 코호트 목록 | `?active_only=true` (선택) |
+| `GET` | `/api/cohorts` | any | 코호트 목록 (학생 수 포함) | `?active_only=true` (선택) |
 | `POST` | `/api/cohorts` | admin | 코호트 생성 | `{cohort_id, name}` |
 | `PUT` | `/api/cohorts/<cohort_id>` | admin | 코호트 수정 | `{name?, active?}` |
 | `DELETE` | `/api/cohorts/<cohort_id>` | admin | 코호트 비활성화 | - |
@@ -284,7 +285,7 @@ az webapp up \
 | Method | Endpoint | Auth | 설명 | Request Body |
 |--------|----------|------|------|-------------|
 | `GET` | `/api/cohorts/<cid>/students` | admin | 학생 전체 목록 | - |
-| `GET` | `/api/cohorts/<cid>/students/names` | any | 학생 id+name 목록 (로그인용) | - |
+| `GET` | `/api/cohorts/<cid>/students/names` | any | 학생 id+name 목록 | - |
 | `POST` | `/api/cohorts/<cid>/students/upload` | admin | 학생 데이터 업로드 | JSON 파일 (`multipart/form-data`) 또는 `{students: [...]}` |
 
 **업로드 JSON 형식:**

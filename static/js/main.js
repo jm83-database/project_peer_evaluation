@@ -76,7 +76,7 @@ function StudentHelpModal({ onClose }) {
                             <li>로그인 후 본인이 속한 팀의 팀원 목록이 표시됩니다.</li>
                             <li>각 팀원에 대해 <strong>3가지 항목</strong>을 1~5점으로 평가합니다.</li>
                             <li><strong>평가 제출하기</strong> 버튼을 클릭하면 완료됩니다.</li>
-                            <li>같은 날 다시 접속하면 이전 평가를 수정할 수 있습니다.</li>
+                            <li>제출 후에는 수정할 수 없으니 신중하게 평가해주세요.</li>
                         </ol>
                     </div>
 
@@ -141,7 +141,8 @@ function AdminHelpModal({ onClose }) {
                         <h3 className="font-semibold text-purple-700 mb-2">2. 과정 관리</h3>
                         <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
                             <li><strong>과정 추가</strong>: 과정 ID(영문 대문자)와 이름을 입력하여 새 교육 과정을 생성합니다.</li>
-                            <li><strong>활성/비활성</strong>: 비활성화된 과정은 학생 로그인 화면에 표시되지 않습니다.</li>
+                            <li><strong>활성/비활성</strong>: 비활성화된 과정의 학생은 로그인할 수 없습니다.</li>
+                            <li><strong>학생 수 표시</strong>: 각 과정에 등록된 학생 수가 표시됩니다. 업로드 후 즉시 반영됩니다.</li>
                             <li><strong>학생 업로드</strong>: 과정을 선택한 후 students.json 파일을 업로드합니다.</li>
                             <li>students.json 형식: <code>[{`{"id": 1, "name": "이름", "password": "1234"}`}]</code></li>
                             <li>기존 출석 시스템의 students.json을 그대로 사용할 수 있습니다.</li>
