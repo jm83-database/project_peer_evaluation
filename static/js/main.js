@@ -202,6 +202,7 @@ function AdminHelpModal({ onClose }) {
                         <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
                             <li><strong>과정 추가</strong>: 과정 ID(영문 대문자)와 이름을 입력하여 새 교육 과정을 생성합니다.</li>
                             <li><strong>활성/비활성</strong>: 비활성화된 과정의 학생은 로그인할 수 없습니다.</li>
+                            <li><strong>과정 삭제</strong>: &#10005; 버튼으로 과정과 모든 데이터(학생, 프로젝트, 평가)를 영구 삭제합니다. 되돌릴 수 없습니다.</li>
                             <li><strong>학생 수 표시</strong>: 각 과정에 등록된 학생 수가 표시됩니다. 업로드 후 즉시 반영됩니다.</li>
                             <li><strong>학생 업로드</strong>: 과정을 선택한 후 students.json 파일을 업로드합니다.</li>
                             <li>students.json 형식: <code>[{`{"id": 1, "name": "이름", "password": "1234"}`}]</code></li>
@@ -226,12 +227,13 @@ function AdminHelpModal({ onClose }) {
                     <div className="p-4 bg-amber-50 rounded-lg">
                         <h3 className="font-semibold text-amber-700 mb-2">4. 대시보드</h3>
                         <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
-                            <li><strong>제출 현황</strong>: 오늘 평가를 제출한/미제출한 학생 목록을 확인합니다.</li>
+                            <li><strong>일간/주간/월간</strong>: 상단 토글로 조회 기간을 전환합니다. 날짜를 선택하면 해당 주 또는 월 전체가 자동 조회됩니다.</li>
+                            <li><strong>추세 차트</strong>: 주간/월간 모드에서 일별 평균 점수 변화를 라인 차트로 확인합니다.</li>
+                            <li><strong>제출 현황</strong>: 선택 기간 내 평가를 제출한/미제출한 학생 목록을 확인합니다.</li>
                             <li><strong>팀별 카드</strong>: 각 팀의 평균 점수를 한눈에 확인합니다. (초록: 4+, 노랑: 3~4, 빨강: 3 미만)</li>
                             <li><strong>학생 랭킹</strong>: 전체 학생을 종합 점수 낮은 순으로 정렬합니다. 3점 미만은 빨간 배경으로 강조됩니다.</li>
                             <li><strong>상세 보기</strong>: 학생 이름을 클릭하면 일별 추이 그래프와 평가자별 상세 점수를 확인합니다.</li>
                             <li><strong>CSV 다운로드</strong>: 전체 평가 데이터를 CSV로 내보낼 수 있습니다.</li>
-                            <li>상단에서 프로젝트와 날짜를 선택하여 조회 범위를 변경할 수 있습니다.</li>
                         </ul>
                     </div>
 
