@@ -1,9 +1,13 @@
 from flask import Flask, render_template, jsonify, request, Response, session
 from flask_compress import Compress
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import json
 import datetime
 import csv
+import re
 import uuid
 from io import StringIO
 from threading import RLock
@@ -19,14 +23,20 @@ app.config['COMPRESS_MIMETYPES'] = [
     'text/html', 'text/css', 'text/xml',
     'application/json', 'application/javascript'
 ]
+app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024  # 1MB 파일 업로드 제한
+app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(hours=1)
 app.secret_key = os.environ.get('SECRET_KEY', 'peer-eval-secret-key-change-in-production')
 
 Compress(app)
+
+limiter = Limiter(get_remote_address, app=app, default_limits=[])
 
 db = CosmosService()
 data_lock = RLock()
 
 TEACHER_PASSWORD = os.environ.get('TEACHER_PASSWORD', 'teacher')
+
+DATE_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 
 
 def get_kst_now():
@@ -59,6 +69,22 @@ def require_student(f):
     return decorated
 
 
+def validate_date(date_str):
+    """YYYY-MM-DD 형식 날짜 검증. 빈 문자열은 허용."""
+    if not date_str:
+        return True
+    return bool(DATE_PATTERN.match(date_str))
+
+
+# ========== SECURITY HEADERS ==========
+
+@app.after_request
+def set_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    return response
+
+
 # ========== MAIN PAGE ==========
 
 @app.route('/')
@@ -69,6 +95,7 @@ def index():
 # ========== AUTH API ==========
 
 @app.route('/api/auth/login', methods=['POST'])
+@limiter.limit("5/minute")
 def student_login():
     data = request.json
     name = data.get('name', '').strip()
@@ -86,7 +113,7 @@ def student_login():
     for cohort in active_cohorts:
         students = db.load_students(cohort['cohort_id'])
         student = next(
-            (s for s in students if s['name'] == name and str(s.get('password', '')) == password),
+            (s for s in students if s['name'] == name and check_password_hash(s.get('password', ''), password)),
             None
         )
         if student:
@@ -97,6 +124,7 @@ def student_login():
     if not found_student:
         return jsonify({'success': False, 'message': '이름 또는 비밀번호가 올바르지 않습니다.'})
 
+    session.permanent = True
     session['user_type'] = 'student'
     session['student_id'] = found_student['id']
     session['student_name'] = found_student['name']
@@ -111,6 +139,7 @@ def student_login():
 
 
 @app.route('/api/auth/admin-login', methods=['POST'])
+@limiter.limit("5/minute")
 def admin_login():
     data = request.json
     password = data.get('password', '')
@@ -118,6 +147,7 @@ def admin_login():
     if password != TEACHER_PASSWORD:
         return jsonify({'success': False, 'message': '비밀번호가 올바르지 않습니다.'})
 
+    session.permanent = True
     session['user_type'] = 'admin'
     return jsonify({'success': True})
 
@@ -224,6 +254,7 @@ def get_students(cohort_id):
 
 
 @app.route('/api/cohorts/<cohort_id>/students/names', methods=['GET'])
+@require_admin
 def get_student_names(cohort_id):
     students = db.load_students(cohort_id)
     return jsonify([{'id': s['id'], 'name': s['name']} for s in students])
@@ -248,10 +279,11 @@ def upload_students(cohort_id):
 
     students = []
     for s in raw_students:
+        raw_pw = str(s.get('password', ''))
         students.append({
             'id': s.get('id', len(students) + 1),
             'name': s.get('name', ''),
-            'password': str(s.get('password', ''))
+            'password': generate_password_hash(raw_pw)
         })
 
     if not students:
@@ -458,6 +490,12 @@ def submit_evaluation():
     if not my_team:
         return jsonify({'success': False, 'message': '배정된 팀이 없습니다.'})
 
+    # 평가 대상이 본인 팀원인지 검증
+    valid_targets = set(mid for mid in my_team['member_ids'] if mid != student_id)
+    for e in eval_data:
+        if e.get('target_id') not in valid_targets:
+            return jsonify({'success': False, 'message': '유효하지 않은 평가 대상입니다.'}), 400
+
     with data_lock:
         evaluations = db.load_evaluations(cohort_id)
 
@@ -483,6 +521,9 @@ def dashboard_summary(cohort_id):
     project_id = request.args.get('project_id', '')
     start_date = request.args.get('start_date', '')
     end_date = request.args.get('end_date', '')
+
+    if not validate_date(start_date) or not validate_date(end_date):
+        return jsonify({'success': False, 'message': '날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)'}), 400
 
     evaluations = db.load_evaluations(cohort_id)
     students = db.load_students(cohort_id)
@@ -542,6 +583,9 @@ def dashboard_team_summary(cohort_id):
     project_id = request.args.get('project_id', '')
     date = request.args.get('date', get_kst_date())
 
+    if not validate_date(date):
+        return jsonify({'success': False, 'message': '날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)'}), 400
+
     projects = db.load_projects(cohort_id)
     project = None
     if project_id:
@@ -597,6 +641,9 @@ def dashboard_team_summary(cohort_id):
 def dashboard_completion(cohort_id):
     project_id = request.args.get('project_id', '')
     date = request.args.get('date', get_kst_date())
+
+    if not validate_date(date):
+        return jsonify({'success': False, 'message': '날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)'}), 400
 
     projects = db.load_projects(cohort_id)
     project = None

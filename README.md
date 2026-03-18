@@ -237,6 +237,23 @@ az webapp up \
 
 ---
 
+## 보안
+
+| 항목 | 설명 |
+|------|------|
+| **비밀번호 해시** | 학생 비밀번호는 업로드 시 `werkzeug` PBKDF2 해시로 변환되어 저장됩니다. 평문 비밀번호는 저장되지 않습니다. |
+| **로그인 Rate Limit** | 학생/관리자 로그인 엔드포인트에 IP당 **5회/분** 제한이 적용됩니다 (`flask-limiter`). |
+| **세션 만료** | 로그인 세션은 **1시간** 후 자동 만료됩니다. |
+| **API 인증** | 학생 목록 조회를 포함한 모든 데이터 API는 관리자 또는 학생 세션 인증이 필요합니다. |
+| **평가 대상 검증** | 평가 제출 시 `target_id`가 본인 팀원인지 서버사이드에서 검증합니다. |
+| **보안 헤더** | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` 헤더가 모든 응답에 포함됩니다. |
+| **파일 업로드 제한** | 업로드 파일 크기는 최대 **1MB**로 제한됩니다. |
+| **입력값 검증** | 대시보드 날짜 파라미터는 `YYYY-MM-DD` 형식으로 검증됩니다. |
+
+> **참고**: 기존에 평문으로 저장된 학생 데이터가 있다면, `students.json`을 다시 업로드해야 해시된 비밀번호로 갱신됩니다.
+
+---
+
 ## 평가 비공개 정책
 
 학생의 평가 내용이 유출되지 않도록 다음과 같은 보호 장치가 적용되어 있습니다:
@@ -285,7 +302,7 @@ az webapp up \
 | Method | Endpoint | Auth | 설명 | Request Body |
 |--------|----------|------|------|-------------|
 | `GET` | `/api/cohorts/<cid>/students` | admin | 학생 전체 목록 | - |
-| `GET` | `/api/cohorts/<cid>/students/names` | any | 학생 id+name 목록 | - |
+| `GET` | `/api/cohorts/<cid>/students/names` | admin | 학생 id+name 목록 | - |
 | `POST` | `/api/cohorts/<cid>/students/upload` | admin | 학생 데이터 업로드 | JSON 파일 (`multipart/form-data`) 또는 `{students: [...]}` |
 
 **업로드 JSON 형식:**
@@ -407,9 +424,10 @@ az webapp up \
 ```json
 {"success": false, "message": "에러 내용"}
 ```
+- `400`: 이미 제출된 평가 재제출 시도, 유효하지 않은 평가 대상, 잘못된 날짜 형식
 - `403`: 권한 부족 (세션 없음 또는 권한 불일치)
-- `400`: 이미 제출된 평가 재제출 시도
 - `404`: 존재하지 않는 리소스
+- `429`: 로그인 시도 횟수 초과 (5회/분)
 
 ---
 
