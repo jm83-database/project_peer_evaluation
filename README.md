@@ -252,6 +252,166 @@ az webapp up \
 
 ---
 
+## API Reference
+
+모든 API는 `/api` 하위 경로에 위치하며, JSON 형식으로 요청/응답합니다.
+
+### 인증 (Auth)
+
+| Method | Endpoint | Auth | 설명 | Request Body |
+|--------|----------|------|------|-------------|
+| `POST` | `/api/auth/login` | - | 학생 로그인 | `{cohort_id, name, password}` |
+| `POST` | `/api/auth/admin-login` | - | 관리자 로그인 | `{password}` |
+| `POST` | `/api/auth/logout` | any | 로그아웃 | - |
+| `GET` | `/api/auth/status` | any | 세션 상태 확인 | - |
+
+**응답 예시 (학생 로그인 성공):**
+```json
+{"success": true, "student_id": 1, "student_name": "홍길동", "cohort_id": "DT4"}
+```
+
+### 코호트 (Cohort)
+
+| Method | Endpoint | Auth | 설명 | Request Body / Params |
+|--------|----------|------|------|-----------------------|
+| `GET` | `/api/cohorts` | any | 코호트 목록 | `?active_only=true` (선택) |
+| `POST` | `/api/cohorts` | admin | 코호트 생성 | `{cohort_id, name}` |
+| `PUT` | `/api/cohorts/<cohort_id>` | admin | 코호트 수정 | `{name?, active?}` |
+| `DELETE` | `/api/cohorts/<cohort_id>` | admin | 코호트 비활성화 | - |
+
+### 학생 (Students)
+
+| Method | Endpoint | Auth | 설명 | Request Body |
+|--------|----------|------|------|-------------|
+| `GET` | `/api/cohorts/<cid>/students` | admin | 학생 전체 목록 | - |
+| `GET` | `/api/cohorts/<cid>/students/names` | any | 학생 id+name 목록 (로그인용) | - |
+| `POST` | `/api/cohorts/<cid>/students/upload` | admin | 학생 데이터 업로드 | JSON 파일 (`multipart/form-data`) 또는 `{students: [...]}` |
+
+**업로드 JSON 형식:**
+```json
+[{"id": 1, "name": "홍길동", "password": "1234"}, ...]
+```
+
+### 프로젝트 & 팀 (Projects & Teams)
+
+| Method | Endpoint | Auth | 설명 | Request Body |
+|--------|----------|------|------|-------------|
+| `GET` | `/api/cohorts/<cid>/projects` | admin | 프로젝트 목록 | - |
+| `POST` | `/api/cohorts/<cid>/projects` | admin | 프로젝트 생성 | `{name, start_date, end_date, teams, unassigned}` |
+| `PUT` | `/api/cohorts/<cid>/projects/<pid>` | admin | 프로젝트 수정 | `{name?, start_date?, end_date?, teams?, unassigned?}` |
+| `DELETE` | `/api/cohorts/<cid>/projects/<pid>` | admin | 프로젝트 삭제 | - |
+| `PUT` | `/api/cohorts/<cid>/projects/<pid>/activate` | admin | 활성 프로젝트 전환 | - |
+
+**teams 구조:**
+```json
+[
+  {"team_id": 1, "name": "팀 1", "member_ids": [1, 5, 10]},
+  {"team_id": 2, "name": "팀 2", "member_ids": [2, 6, 11]}
+]
+```
+
+> 새 프로젝트 생성 시 기존 프로젝트는 자동 비활성화됩니다.
+
+### 평가 (Evaluations) - 학생용
+
+| Method | Endpoint | Auth | 설명 |
+|--------|----------|------|------|
+| `GET` | `/api/evaluation/my-team` | student | 내 팀원 목록 (본인 제외, 활성 프로젝트 기준) |
+| `GET` | `/api/evaluation/today` | student | 오늘 제출 여부 확인 (**점수 미반환**) |
+| `POST` | `/api/evaluation/submit` | student | 오늘 평가 제출 (**1일 1회, 재제출 불가**) |
+
+**제출 Request Body:**
+```json
+{
+  "evaluations": [
+    {"target_id": 2, "meeting_attendance": 4, "contribution": 3, "repeated_absence": 5},
+    {"target_id": 3, "meeting_attendance": 5, "contribution": 4, "repeated_absence": 4}
+  ]
+}
+```
+- 각 항목: 1~5 정수 (1=매우 부족, 5=매우 우수)
+- `evaluator_id`는 세션에서 자동 파생 (클라이언트 조작 불가)
+
+**`/api/evaluation/today` 응답 (제출 전):**
+```json
+{"success": true, "has_submitted": false}
+```
+
+**`/api/evaluation/today` 응답 (제출 후):**
+```json
+{"success": true, "has_submitted": true, "submitted_at": "2026-03-18T15:30:22"}
+```
+> 점수 데이터는 반환되지 않습니다 (비공개 정책).
+
+### 대시보드 (Dashboard) - 관리자용
+
+| Method | Endpoint | Auth | 설명 | Query Params |
+|--------|----------|------|------|-------------|
+| `GET` | `/api/admin/<cid>/dashboard/summary` | admin | 학생별 평균 점수 집계 | `project_id`, `start_date`, `end_date` |
+| `GET` | `/api/admin/<cid>/dashboard/team-summary` | admin | 팀별 평균 점수 집계 | `project_id`, `date` |
+| `GET` | `/api/admin/<cid>/dashboard/completion` | admin | 오늘 제출/미제출 현황 | `project_id`, `date` |
+| `GET` | `/api/admin/<cid>/dashboard/detail` | admin | 특정 학생 상세 (평가자별, 일별 추이) | `project_id`, `target_id` |
+| `GET` | `/api/admin/<cid>/dashboard/download` | admin | CSV 내보내기 | `project_id` |
+
+**summary 응답 예시:**
+```json
+[
+  {
+    "student_id": 2,
+    "student_name": "김철수",
+    "eval_count": 12,
+    "meeting_attendance_avg": 3.5,
+    "contribution_avg": 2.8,
+    "repeated_absence_avg": 4.2,
+    "overall_avg": 3.5
+  }
+]
+```
+> 종합 평균(`overall_avg`) 낮은 순으로 정렬됩니다.
+
+**detail 응답 예시:**
+```json
+{
+  "student_name": "김철수",
+  "details": [
+    {"date": "2026-03-18", "evaluator_id": 1, "evaluator_name": "홍길동", "meeting_attendance": 4, "contribution": 3, "repeated_absence": 5}
+  ],
+  "trend": [
+    {"date": "2026-03-18", "meeting_attendance_avg": 4.0, "contribution_avg": 3.0, "repeated_absence_avg": 5.0}
+  ]
+}
+```
+
+**completion 응답 예시:**
+```json
+{
+  "submitted": [{"id": 1, "name": "홍길동"}],
+  "not_submitted": [{"id": 2, "name": "김철수"}],
+  "total": 10,
+  "submitted_count": 5
+}
+```
+
+### Auth 권한 레벨
+
+| 레벨 | 설명 | 적용 방식 |
+|------|------|-----------|
+| `-` | 인증 불필요 | 로그인 화면 관련 |
+| `any` | 아무 세션이나 가능 | 로그아웃, 상태 확인 |
+| `student` | 학생 세션 필요 | 평가 관련 (cohort_id, student_id 세션에서 파생) |
+| `admin` | 관리자 세션 필요 | 코호트/프로젝트/대시보드 관리 |
+
+### 공통 에러 응답
+
+```json
+{"success": false, "message": "에러 내용"}
+```
+- `403`: 권한 부족 (세션 없음 또는 권한 불일치)
+- `400`: 이미 제출된 평가 재제출 시도
+- `404`: 존재하지 않는 리소스
+
+---
+
 ## 관리자 기본 비밀번호
 
 환경변수 `TEACHER_PASSWORD`로 설정합니다. 미설정 시 `.env.example`의 기본값을 사용합니다.
