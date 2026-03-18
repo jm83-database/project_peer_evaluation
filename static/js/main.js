@@ -48,6 +48,154 @@ function ScoreBadge({ score }) {
     return <span className={`${cls} px-2 py-1 rounded-full text-sm font-semibold`}>{score}</span>;
 }
 
+// ========== Help Button ==========
+function HelpButton({ onClick }) {
+    return (
+        <button
+            onClick={onClick}
+            className="fixed left-5 bottom-5 w-11 h-11 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center text-xl font-bold hover:bg-indigo-700 transition hover:scale-110 z-50"
+            title="도움말"
+        >?</button>
+    );
+}
+
+// ========== Help Modal (Student) ==========
+function StudentHelpModal({ onClose }) {
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold text-indigo-800">학생 사용 가이드</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                </div>
+
+                <div className="space-y-5">
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                        <h3 className="font-semibold text-indigo-700 mb-2">평가 방법</h3>
+                        <ol className="list-decimal pl-5 space-y-2 text-sm text-gray-700">
+                            <li>로그인 후 본인이 속한 팀의 팀원 목록이 표시됩니다.</li>
+                            <li>각 팀원에 대해 <strong>3가지 항목</strong>을 1~5점으로 평가합니다.</li>
+                            <li><strong>평가 제출하기</strong> 버튼을 클릭하면 완료됩니다.</li>
+                            <li>같은 날 다시 접속하면 이전 평가를 수정할 수 있습니다.</li>
+                        </ol>
+                    </div>
+
+                    <div className="p-4 bg-amber-50 rounded-lg">
+                        <h3 className="font-semibold text-amber-700 mb-2">평가 항목 설명</h3>
+                        <div className="space-y-2 text-sm text-gray-700">
+                            <div className="flex gap-2">
+                                <span className="font-semibold text-amber-600 w-20 flex-shrink-0">회의 참석</span>
+                                <span>팀 회의에 참석했는지 평가합니다. 5=매번 참석, 1=거의 불참</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <span className="font-semibold text-amber-600 w-20 flex-shrink-0">실질 기여</span>
+                                <span>프로젝트에 실질적으로 기여했는지 평가합니다. 5=매우 기여, 1=기여 없음</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <span className="font-semibold text-amber-600 w-20 flex-shrink-0">참여 성실</span>
+                                <span>전반적인 참여 성실도를 평가합니다. 5=매우 성실, 1=반복적 미참여</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-4 bg-green-50 rounded-lg">
+                        <h3 className="font-semibold text-green-700 mb-2">참고 사항</h3>
+                        <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                            <li>평가는 <strong>익명</strong>으로 처리됩니다. 누가 평가했는지 다른 학생에게 공개되지 않습니다.</li>
+                            <li>매일 1회 평가를 제출하며, 당일 내 수정이 가능합니다.</li>
+                            <li>솔직하고 공정하게 평가해주세요.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ========== Help Modal (Admin) ==========
+function AdminHelpModal({ onClose }) {
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content" onClick={e => e.stopPropagation()} style={{maxWidth: '900px'}}>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold text-indigo-800">관리자 사용 가이드</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+                </div>
+
+                <div className="space-y-5">
+                    {/* 초기 설정 */}
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                        <h3 className="font-semibold text-indigo-700 mb-2">1. 초기 설정 순서</h3>
+                        <ol className="list-decimal pl-5 space-y-2 text-sm text-gray-700">
+                            <li><strong>과정 관리</strong> 탭에서 교육 과정(코호트)을 추가합니다. (예: DT4 / MS Data 4기)</li>
+                            <li>해당 과정에 <strong>students.json 파일을 업로드</strong>하여 학생을 등록합니다.</li>
+                            <li><strong>프로젝트 관리</strong> 탭에서 새 프로젝트를 생성하고 팀을 구성합니다.</li>
+                            <li>학생들에게 로그인 정보(이름 + 비밀번호)를 안내합니다.</li>
+                        </ol>
+                    </div>
+
+                    {/* 과정 관리 */}
+                    <div className="p-4 bg-purple-50 rounded-lg">
+                        <h3 className="font-semibold text-purple-700 mb-2">2. 과정 관리</h3>
+                        <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                            <li><strong>과정 추가</strong>: 과정 ID(영문 대문자)와 이름을 입력하여 새 교육 과정을 생성합니다.</li>
+                            <li><strong>활성/비활성</strong>: 비활성화된 과정은 학생 로그인 화면에 표시되지 않습니다.</li>
+                            <li><strong>학생 업로드</strong>: 과정을 선택한 후 students.json 파일을 업로드합니다.</li>
+                            <li>students.json 형식: <code>[{`{"id": 1, "name": "이름", "password": "1234"}`}]</code></li>
+                            <li>기존 출석 시스템의 students.json을 그대로 사용할 수 있습니다.</li>
+                        </ul>
+                    </div>
+
+                    {/* 프로젝트/팀 관리 */}
+                    <div className="p-4 bg-green-50 rounded-lg">
+                        <h3 className="font-semibold text-green-700 mb-2">3. 프로젝트 & 팀 관리</h3>
+                        <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                            <li><strong>새 프로젝트</strong>: 프로젝트 이름, 시작/종료일을 입력하고 팀을 구성합니다.</li>
+                            <li><strong>팀 구성</strong>: 학생 카드를 드래그앤드롭으로 팀에 배정합니다. (모바일: 이동 드롭다운 사용)</li>
+                            <li><strong>균등 배분</strong>: 모든 학생을 팀에 자동으로 랜덤 배분합니다.</li>
+                            <li><strong>팀 이름 수정</strong>: 팀 컬럼 상단의 이름을 클릭하여 직접 수정할 수 있습니다.</li>
+                            <li><strong>활성 프로젝트</strong>: 한 번에 하나의 프로젝트만 활성화됩니다. 학생은 활성 프로젝트의 팀원만 평가합니다.</li>
+                            <li>새 프로젝트를 생성하면 기존 프로젝트는 자동으로 비활성화됩니다.</li>
+                        </ul>
+                    </div>
+
+                    {/* 대시보드 */}
+                    <div className="p-4 bg-amber-50 rounded-lg">
+                        <h3 className="font-semibold text-amber-700 mb-2">4. 대시보드</h3>
+                        <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                            <li><strong>제출 현황</strong>: 오늘 평가를 제출한/미제출한 학생 목록을 확인합니다.</li>
+                            <li><strong>팀별 카드</strong>: 각 팀의 평균 점수를 한눈에 확인합니다. (초록: 4+, 노랑: 3~4, 빨강: 3 미만)</li>
+                            <li><strong>학생 랭킹</strong>: 전체 학생을 종합 점수 낮은 순으로 정렬합니다. 3점 미만은 빨간 배경으로 강조됩니다.</li>
+                            <li><strong>상세 보기</strong>: 학생 이름을 클릭하면 일별 추이 그래프와 평가자별 상세 점수를 확인합니다.</li>
+                            <li><strong>CSV 다운로드</strong>: 전체 평가 데이터를 CSV로 내보낼 수 있습니다.</li>
+                            <li>상단에서 프로젝트와 날짜를 선택하여 조회 범위를 변경할 수 있습니다.</li>
+                        </ul>
+                    </div>
+
+                    {/* 점수 기준 */}
+                    <div className="p-4 bg-red-50 rounded-lg">
+                        <h3 className="font-semibold text-red-700 mb-2">5. 점수 해석 기준</h3>
+                        <div className="grid grid-cols-3 gap-3 text-sm text-center mt-2">
+                            <div className="bg-green-100 rounded-lg p-3">
+                                <div className="font-bold text-green-700 text-lg">4.0 ~ 5.0</div>
+                                <div className="text-green-600">양호</div>
+                            </div>
+                            <div className="bg-yellow-100 rounded-lg p-3">
+                                <div className="font-bold text-yellow-700 text-lg">3.0 ~ 3.9</div>
+                                <div className="text-yellow-600">주의</div>
+                            </div>
+                            <div className="bg-red-100 rounded-lg p-3">
+                                <div className="font-bold text-red-700 text-lg">1.0 ~ 2.9</div>
+                                <div className="text-red-600">경고 (면담 권장)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ========== LOGIN PAGE ==========
 function LoginPage({ onLogin, onAdminLogin, showToast }) {
     const [cohorts, setCohorts] = useState([]);
@@ -196,6 +344,7 @@ function StudentView({ studentInfo, onLogout, showToast }) {
     const [scores, setScores] = useState({});
     const [loading, setLoading] = useState(true);
     const [submitted, setSubmitted] = useState(false);
+    const [showHelp, setShowHelp] = useState(false);
 
     useEffect(() => { loadTeamAndEval(); }, []);
 
@@ -330,6 +479,8 @@ function StudentView({ studentInfo, onLogout, showToast }) {
                     </div>
                 )}
             </div>
+            <HelpButton onClick={() => setShowHelp(true)} />
+            {showHelp && <StudentHelpModal onClose={() => setShowHelp(false)} />}
         </div>
     );
 }
@@ -339,6 +490,7 @@ function AdminView({ onLogout, showToast }) {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [cohorts, setCohorts] = useState([]);
     const [selectedCohort, setSelectedCohort] = useState('');
+    const [showHelp, setShowHelp] = useState(false);
 
     useEffect(() => {
         api('/api/cohorts').then(data => {
@@ -413,6 +565,8 @@ function AdminView({ onLogout, showToast }) {
                     <CohortManagement cohorts={cohorts} refresh={refreshCohorts} showToast={showToast} />
                 )}
             </div>
+            <HelpButton onClick={() => setShowHelp(true)} />
+            {showHelp && <AdminHelpModal onClose={() => setShowHelp(false)} />}
         </div>
     );
 }
