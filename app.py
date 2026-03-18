@@ -591,9 +591,10 @@ def dashboard_summary(cohort_id):
 @require_admin
 def dashboard_team_summary(cohort_id):
     project_id = request.args.get('project_id', '')
-    date = request.args.get('date', get_kst_date())
+    start_date = request.args.get('start_date', request.args.get('date', get_kst_date()))
+    end_date = request.args.get('end_date', start_date)
 
-    if not validate_date(date):
+    if not validate_date(start_date) or not validate_date(end_date):
         return jsonify({'success': False, 'message': '날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)'}), 400
 
     projects = db.load_projects(cohort_id)
@@ -611,8 +612,7 @@ def dashboard_team_summary(cohort_id):
     student_map = {s['id']: s['name'] for s in students}
 
     filtered = [e for e in evaluations if e.get('project_id') == project['project_id']]
-    if date:
-        filtered = [e for e in filtered if e.get('date') == date]
+    filtered = [e for e in filtered if start_date <= e.get('date', '') <= end_date]
 
     team_summaries = []
     for team in project.get('teams', []):
@@ -650,9 +650,10 @@ def dashboard_team_summary(cohort_id):
 @require_admin
 def dashboard_completion(cohort_id):
     project_id = request.args.get('project_id', '')
-    date = request.args.get('date', get_kst_date())
+    start_date = request.args.get('start_date', request.args.get('date', get_kst_date()))
+    end_date = request.args.get('end_date', start_date)
 
-    if not validate_date(date):
+    if not validate_date(start_date) or not validate_date(end_date):
         return jsonify({'success': False, 'message': '날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)'}), 400
 
     projects = db.load_projects(cohort_id)
@@ -672,7 +673,7 @@ def dashboard_completion(cohort_id):
     evaluations = db.load_evaluations(cohort_id)
     submitted_ids = set()
     for e in evaluations:
-        if e.get('project_id') == project['project_id'] and e.get('date') == date:
+        if e.get('project_id') == project['project_id'] and start_date <= e.get('date', '') <= end_date:
             submitted_ids.add(e['evaluator_id'])
 
     students = db.load_students(cohort_id)
@@ -687,6 +688,55 @@ def dashboard_completion(cohort_id):
         'total': len(all_member_ids),
         'submitted_count': len(submitted)
     })
+
+
+@app.route('/api/admin/<cohort_id>/dashboard/trend', methods=['GET'])
+@require_admin
+def dashboard_trend(cohort_id):
+    project_id = request.args.get('project_id', '')
+    start_date = request.args.get('start_date', '')
+    end_date = request.args.get('end_date', '')
+
+    if not validate_date(start_date) or not validate_date(end_date):
+        return jsonify({'success': False, 'message': '날짜 형식이 올바르지 않습니다. (YYYY-MM-DD)'}), 400
+
+    evaluations = db.load_evaluations(cohort_id)
+
+    filtered = evaluations
+    if project_id:
+        filtered = [e for e in filtered if e.get('project_id') == project_id]
+    filtered = [e for e in filtered if start_date <= e.get('date', '') <= end_date]
+
+    # Group by date
+    daily = {}
+    for record in filtered:
+        d = record.get('date', '')
+        if d not in daily:
+            daily[d] = {'meeting_sum': 0, 'contribution_sum': 0, 'absence_sum': 0, 'count': 0, 'submitters': set()}
+        daily[d]['submitters'].add(record['evaluator_id'])
+        for ev in record.get('evaluations', []):
+            daily[d]['meeting_sum'] += ev.get('meeting_attendance', 0)
+            daily[d]['contribution_sum'] += ev.get('contribution', 0)
+            daily[d]['absence_sum'] += ev.get('repeated_absence', 0)
+            daily[d]['count'] += 1
+
+    result = []
+    for d in sorted(daily.keys()):
+        dd = daily[d]
+        c = dd['count']
+        result.append({
+            'date': d,
+            'meeting_attendance_avg': round(dd['meeting_sum'] / c, 2) if c else 0,
+            'contribution_avg': round(dd['contribution_sum'] / c, 2) if c else 0,
+            'repeated_absence_avg': round(dd['absence_sum'] / c, 2) if c else 0,
+            'overall_avg': round(
+                (dd['meeting_sum'] + dd['contribution_sum'] + dd['absence_sum']) / (c * 3), 2
+            ) if c else 0,
+            'eval_count': c,
+            'submitter_count': len(dd['submitters'])
+        })
+
+    return jsonify(result)
 
 
 @app.route('/api/admin/<cohort_id>/dashboard/detail', methods=['GET'])

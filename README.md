@@ -22,7 +22,7 @@
 ### 관리자
 - **과정 관리**: 코호트 추가/비활성화, `students.json` 업로드, 과정별 등록 학생 수 확인
 - **프로젝트 관리**: 프로젝트 생성, 팀 구성 (드래그앤드롭 + 균등 배분)
-- **대시보드**: 제출 현황 도넛 차트, 팀별/학생별 평균 바 차트, 학생 상세 일별 추이, CSV 다운로드
+- **대시보드**: 일간/주간/월간 뷰 전환, 제출 현황 도넛 차트, 팀별/학생별 평균 바 차트, 기간별 추세 라인 차트, 학생 상세 일별 추이, CSV 다운로드
 - 대시보드에서 **평가자별 상세 점수 열람 가능** (학생 간에는 익명)
 
 ## 기술 스택
@@ -379,8 +379,9 @@ az webapp up \
 | Method | Endpoint | Auth | 설명 | Query Params |
 |--------|----------|------|------|-------------|
 | `GET` | `/api/admin/<cid>/dashboard/summary` | admin | 학생별 평균 점수 집계 | `project_id`, `start_date`, `end_date` |
-| `GET` | `/api/admin/<cid>/dashboard/team-summary` | admin | 팀별 평균 점수 집계 | `project_id`, `date` |
-| `GET` | `/api/admin/<cid>/dashboard/completion` | admin | 오늘 제출/미제출 현황 | `project_id`, `date` |
+| `GET` | `/api/admin/<cid>/dashboard/team-summary` | admin | 팀별 평균 점수 집계 | `project_id`, `start_date`, `end_date` (또는 `date`) |
+| `GET` | `/api/admin/<cid>/dashboard/completion` | admin | 제출/미제출 현황 | `project_id`, `start_date`, `end_date` (또는 `date`) |
+| `GET` | `/api/admin/<cid>/dashboard/trend` | admin | 일별 평균 점수 추이 | `project_id`, `start_date`, `end_date` |
 | `GET` | `/api/admin/<cid>/dashboard/detail` | admin | 특정 학생 상세 (평가자별, 일별 추이) | `project_id`, `target_id` |
 | `GET` | `/api/admin/<cid>/dashboard/download` | admin | CSV 내보내기 | `project_id` |
 
@@ -413,6 +414,22 @@ az webapp up \
 }
 ```
 
+**trend 응답 예시:**
+```json
+[
+  {
+    "date": "2026-03-17",
+    "meeting_attendance_avg": 4.0,
+    "contribution_avg": 3.5,
+    "repeated_absence_avg": 4.2,
+    "overall_avg": 3.9,
+    "eval_count": 15,
+    "submitter_count": 8
+  }
+]
+```
+> `start_date` ~ `end_date` 범위 내 평가 데이터가 있는 날짜만 반환됩니다. 주간/월간 뷰에서 추세 라인 차트에 사용됩니다.
+
 **completion 응답 예시:**
 ```json
 {
@@ -422,6 +439,7 @@ az webapp up \
   "submitted_count": 5
 }
 ```
+> `start_date`/`end_date`를 전달하면 해당 기간 내 1회 이상 제출한 학생을 집계합니다.
 
 ### Auth 권한 레벨
 

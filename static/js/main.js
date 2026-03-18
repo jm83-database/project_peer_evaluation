@@ -11,8 +11,56 @@ const api = async (url, options = {}) => {
     }
     const res = await fetch(url, config);
     if (url.includes('/download')) return res;
+    if (res.status === 429) {
+        return { success: false, rate_limited: true, message: '요청 횟수를 초과했습니다.' };
+    }
     return res.json();
 };
+
+// ========== Rate Limit Modal ==========
+function RateLimitModal({ onClose }) {
+    const [remaining, setRemaining] = useState(60);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setRemaining(prev => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    onClose();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const mins = Math.floor(remaining / 60);
+    const secs = remaining % 60;
+
+    return (
+        <div className="modal-overlay">
+            <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm text-center">
+                <div className="text-5xl mb-4">&#9203;</div>
+                <h2 className="text-lg font-bold text-gray-800 mb-2">로그인 시도 횟수 초과</h2>
+                <p className="text-sm text-gray-500 mb-5">
+                    보안을 위해 잠시 후 다시 시도해주세요.<br/>
+                    입력하신 정보가 정확한지 확인해보세요.
+                </p>
+                <div className="text-4xl font-mono font-bold text-indigo-600 mb-2">
+                    {mins}:{secs.toString().padStart(2, '0')}
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2 mb-5">
+                    <div
+                        className="bg-indigo-600 h-2 rounded-full transition-all duration-1000"
+                        style={{width: `${(remaining / 60) * 100}%`}}
+                    ></div>
+                </div>
+                <p className="text-xs text-gray-400">자동으로 닫힙니다</p>
+            </div>
+        </div>
+    );
+}
 
 // ========== Server Time Hook ==========
 function useServerTime() {
@@ -218,6 +266,7 @@ function LoginPage({ onLogin, onAdminLogin, showToast }) {
     const [showAdmin, setShowAdmin] = useState(false);
     const [adminPw, setAdminPw] = useState('');
     const [showHelp, setShowHelp] = useState(false);
+    const [showRateLimit, setShowRateLimit] = useState(false);
     const serverTime = useServerTime();
 
     const handleLogin = async () => {
@@ -231,6 +280,8 @@ function LoginPage({ onLogin, onAdminLogin, showToast }) {
         });
         if (res.success) {
             onLogin(res);
+        } else if (res.rate_limited) {
+            setShowRateLimit(true);
         } else {
             showToast(res.message, 'error');
         }
@@ -243,6 +294,8 @@ function LoginPage({ onLogin, onAdminLogin, showToast }) {
         });
         if (res.success) {
             onAdminLogin();
+        } else if (res.rate_limited) {
+            setShowRateLimit(true);
         } else {
             showToast(res.message, 'error');
         }
@@ -326,6 +379,7 @@ function LoginPage({ onLogin, onAdminLogin, showToast }) {
             </div>
             <HelpButton onClick={() => setShowHelp(true)} />
             {showHelp && <StudentHelpModal onClose={() => setShowHelp(false)} />}
+            {showRateLimit && <RateLimitModal onClose={() => setShowRateLimit(false)} />}
         </div>
     );
 }
@@ -1158,16 +1212,50 @@ function AdminDashboard({ cohortId, showToast }) {
     const [projects, setProjects] = useState([]);
     const [selectedProject, setSelectedProject] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [viewMode, setViewMode] = useState('daily');
     const [summary, setSummary] = useState([]);
     const [teamSummary, setTeamSummary] = useState([]);
     const [completion, setCompletion] = useState(null);
+    const [trendData, setTrendData] = useState([]);
     const [detailStudent, setDetailStudent] = useState(null);
     const [detailData, setDetailData] = useState(null);
 
     const chartRef = useRef(null);
     const teamChartRef = useRef(null);
     const donutRef = useRef(null);
+    const trendChartRef = useRef(null);
     const chartInstances = useRef({});
+
+    const getDateRange = (d, mode) => {
+        const dt = new Date(d + 'T00:00:00');
+        if (mode === 'daily') return { start: d, end: d };
+        if (mode === 'weekly') {
+            const day = dt.getDay();
+            const mon = new Date(dt);
+            mon.setDate(dt.getDate() - (day === 0 ? 6 : day - 1));
+            const sun = new Date(mon);
+            sun.setDate(mon.getDate() + 6);
+            return { start: mon.toISOString().split('T')[0], end: sun.toISOString().split('T')[0] };
+        }
+        if (mode === 'monthly') {
+            const y = dt.getFullYear(), m = dt.getMonth();
+            const first = new Date(y, m, 1);
+            const last = new Date(y, m + 1, 0);
+            return { start: first.toISOString().split('T')[0], end: last.toISOString().split('T')[0] };
+        }
+        return { start: d, end: d };
+    };
+
+    const getPeriodLabel = (d, mode) => {
+        const { start, end } = getDateRange(d, mode);
+        if (mode === 'daily') return start;
+        if (mode === 'weekly') return `${start} ~ ${end}`;
+        if (mode === 'monthly') {
+            const dt = new Date(d + 'T00:00:00');
+            return `${dt.getFullYear()}년 ${dt.getMonth() + 1}월`;
+        }
+        return start;
+    };
 
     useEffect(() => {
         api(`/api/cohorts/${cohortId}/projects`).then(data => {
@@ -1179,17 +1267,23 @@ function AdminDashboard({ cohortId, showToast }) {
 
     useEffect(() => {
         if (selectedProject) loadDashboard();
-    }, [selectedProject, date]);
+    }, [selectedProject, date, viewMode]);
 
     const loadDashboard = async () => {
-        const [sum, teamSum, comp] = await Promise.all([
-            api(`/api/admin/${cohortId}/dashboard/summary?project_id=${selectedProject}`),
-            api(`/api/admin/${cohortId}/dashboard/team-summary?project_id=${selectedProject}&date=${date}`),
-            api(`/api/admin/${cohortId}/dashboard/completion?project_id=${selectedProject}&date=${date}`)
-        ]);
-        setSummary(sum);
-        setTeamSummary(teamSum);
-        setCompletion(comp);
+        const { start, end } = getDateRange(date, viewMode);
+        const queries = [
+            api(`/api/admin/${cohortId}/dashboard/summary?project_id=${selectedProject}&start_date=${start}&end_date=${end}`),
+            api(`/api/admin/${cohortId}/dashboard/team-summary?project_id=${selectedProject}&start_date=${start}&end_date=${end}`),
+            api(`/api/admin/${cohortId}/dashboard/completion?project_id=${selectedProject}&start_date=${start}&end_date=${end}`)
+        ];
+        if (viewMode !== 'daily') {
+            queries.push(api(`/api/admin/${cohortId}/dashboard/trend?project_id=${selectedProject}&start_date=${start}&end_date=${end}`));
+        }
+        const results = await Promise.all(queries);
+        setSummary(results[0]);
+        setTeamSummary(results[1]);
+        setCompletion(results[2]);
+        setTrendData(viewMode !== 'daily' ? (results[3] || []) : []);
     };
 
     // Charts
@@ -1199,7 +1293,7 @@ function AdminDashboard({ cohortId, showToast }) {
         return () => {
             Object.values(chartInstances.current).forEach(c => c?.destroy());
         };
-    }, [summary, teamSummary, completion]);
+    }, [summary, teamSummary, completion, trendData]);
 
     const renderCharts = () => {
         // Destroy existing
@@ -1222,7 +1316,7 @@ function AdminDashboard({ cohortId, showToast }) {
                     responsive: true,
                     plugins: {
                         legend: { position: 'bottom' },
-                        title: { display: true, text: `오늘 제출 현황 (${date})` }
+                        title: { display: true, text: `제출 현황 (${getPeriodLabel(date, viewMode)})` }
                     }
                 }
             });
@@ -1244,7 +1338,41 @@ function AdminDashboard({ cohortId, showToast }) {
                 options: {
                     responsive: true,
                     scales: { y: { min: 0, max: 5 } },
-                    plugins: { title: { display: true, text: '팀별 평균 점수' } }
+                    plugins: { title: { display: true, text: `팀별 평균 점수 (${getPeriodLabel(date, viewMode)})` } }
+                }
+            });
+        }
+
+        // Trend Line Chart
+        if (trendChartRef.current && trendData.length > 1) {
+            const ctx = trendChartRef.current.getContext('2d');
+            chartInstances.current.trend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: trendData.map(t => t.date.slice(5)),
+                    datasets: [
+                        { label: '회의 참석', data: trendData.map(t => t.meeting_attendance_avg), borderColor: '#6366f1', backgroundColor: '#6366f120', tension: 0.3, fill: false, pointRadius: 3 },
+                        { label: '실질 기여', data: trendData.map(t => t.contribution_avg), borderColor: '#8b5cf6', backgroundColor: '#8b5cf620', tension: 0.3, fill: false, pointRadius: 3 },
+                        { label: '참여 성실', data: trendData.map(t => t.repeated_absence_avg), borderColor: '#a78bfa', backgroundColor: '#a78bfa20', tension: 0.3, fill: false, pointRadius: 3 },
+                        { label: '종합', data: trendData.map(t => t.overall_avg), borderColor: '#ef4444', backgroundColor: '#ef444420', tension: 0.3, fill: false, pointRadius: 3, borderDash: [5, 5] }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { min: 0, max: 5 } },
+                    plugins: {
+                        title: { display: true, text: `일별 평균 점수 추이 (${getPeriodLabel(date, viewMode)})` },
+                        tooltip: {
+                            callbacks: {
+                                afterBody: (items) => {
+                                    const idx = items[0]?.dataIndex;
+                                    if (idx !== undefined && trendData[idx]) {
+                                        return `평가 ${trendData[idx].eval_count}건 | 제출 ${trendData[idx].submitter_count}명`;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }
@@ -1304,6 +1432,15 @@ function AdminDashboard({ cohortId, showToast }) {
                         </option>
                     ))}
                 </select>
+                <div className="flex border rounded-lg overflow-hidden">
+                    {[{id: 'daily', label: '일간'}, {id: 'weekly', label: '주간'}, {id: 'monthly', label: '월간'}].map(m => (
+                        <button
+                            key={m.id}
+                            onClick={() => setViewMode(m.id)}
+                            className={`px-3 py-2 text-sm font-medium transition ${viewMode === m.id ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                        >{m.label}</button>
+                    ))}
+                </div>
                 <input type="date" className="border rounded-lg px-3 py-2" value={date} onChange={e => setDate(e.target.value)} />
                 <button onClick={loadDashboard} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition text-sm">
                     새로고침
@@ -1312,6 +1449,18 @@ function AdminDashboard({ cohortId, showToast }) {
                     CSV 다운로드
                 </button>
             </div>
+            {viewMode !== 'daily' && (
+                <div className="text-sm text-gray-500 bg-indigo-50 rounded-lg px-4 py-2">
+                    조회 기간: <span className="font-semibold text-indigo-700">{getPeriodLabel(date, viewMode)}</span>
+                </div>
+            )}
+
+            {/* Trend Chart (weekly/monthly only) */}
+            {viewMode !== 'daily' && trendData.length > 1 && (
+                <div className="bg-white rounded-xl shadow-sm border p-4">
+                    <canvas ref={trendChartRef}></canvas>
+                </div>
+            )}
 
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -1323,7 +1472,9 @@ function AdminDashboard({ cohortId, showToast }) {
                             <span className="text-2xl font-bold text-indigo-700">
                                 {completion.submitted_count}/{completion.total}
                             </span>
-                            <span className="text-gray-500 text-sm ml-1">명 제출</span>
+                            <span className="text-gray-500 text-sm ml-1">
+                                {viewMode === 'daily' ? '명 제출' : '명 제출 (기간 내 1회 이상)'}
+                            </span>
                         </div>
                     )}
                 </div>
