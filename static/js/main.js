@@ -714,12 +714,25 @@ function CohortManagement({ cohorts, refresh, showToast, onSelectCohort }) {
         }
     };
 
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
+
     const toggleActive = async (cohort) => {
         await api(`/api/cohorts/${cohort.cohort_id}`, {
             method: 'PUT',
             body: { active: !cohort.active }
         });
         refresh();
+    };
+
+    const handleDelete = async (cohortId) => {
+        const res = await api(`/api/cohorts/${cohortId}?permanent=true`, { method: 'DELETE' });
+        if (res.success) {
+            showToast('과정이 완전히 삭제되었습니다.', 'success');
+            setDeleteConfirm(null);
+            refresh();
+        } else {
+            showToast(res.message, 'error');
+        }
     };
 
     const handleUpload = async () => {
@@ -788,14 +801,21 @@ function CohortManagement({ cohorts, refresh, showToast, onSelectCohort }) {
                                         {c.student_count > 0 ? `${c.student_count}명` : '미등록'}
                                     </span>
                                 </div>
-                                <button
-                                    onClick={() => toggleActive(c)}
-                                    className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                        c.active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
-                                    }`}
-                                >
-                                    {c.active ? '활성' : '비활성'}
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => toggleActive(c)}
+                                        className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                            c.active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
+                                        }`}
+                                    >
+                                        {c.active ? '활성' : '비활성'}
+                                    </button>
+                                    <button
+                                        onClick={() => setDeleteConfirm(c)}
+                                        className="px-2 py-1 rounded-full text-sm text-red-400 hover:bg-red-50 hover:text-red-600 transition"
+                                        title="과정 삭제"
+                                    >&#10005;</button>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -823,6 +843,34 @@ function CohortManagement({ cohorts, refresh, showToast, onSelectCohort }) {
                     </button>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirm && (
+                <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}>
+                    <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                        <div className="text-center">
+                            <div className="text-4xl mb-3 text-red-500">&#9888;</div>
+                            <h3 className="text-lg font-bold text-gray-800 mb-2">과정 삭제</h3>
+                            <p className="text-sm text-gray-600 mb-1">
+                                <span className="font-semibold text-indigo-700">{deleteConfirm.name} ({deleteConfirm.cohort_id})</span>
+                            </p>
+                            <p className="text-sm text-red-600 mb-4">
+                                학생, 프로젝트, 평가 데이터가 모두 삭제됩니다.<br/>이 작업은 되돌릴 수 없습니다.
+                            </p>
+                            <div className="flex gap-3 justify-center">
+                                <button
+                                    onClick={() => setDeleteConfirm(null)}
+                                    className="px-5 py-2 rounded-lg border text-gray-600 hover:bg-gray-50 transition"
+                                >취소</button>
+                                <button
+                                    onClick={() => handleDelete(deleteConfirm.cohort_id)}
+                                    className="px-5 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+                                >삭제</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

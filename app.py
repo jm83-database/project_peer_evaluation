@@ -249,9 +249,17 @@ def delete_cohort(cohort_id):
     if not cohort:
         return jsonify({'success': False, 'message': '코호트를 찾을 수 없습니다.'}), 404
 
-    cohort['active'] = False
-    db.save_cohorts(cohorts)
-    return jsonify({'success': True})
+    permanent = request.args.get('permanent', 'false').lower() == 'true'
+
+    if permanent:
+        db.delete_cohort_data(cohort_id)
+        cohorts = [c for c in cohorts if c['cohort_id'] != cohort_id]
+        db.save_cohorts(cohorts)
+        return jsonify({'success': True, 'message': '과정과 모든 데이터가 삭제되었습니다.'})
+    else:
+        cohort['active'] = False
+        db.save_cohorts(cohorts)
+        return jsonify({'success': True})
 
 
 # ========== STUDENTS API ==========

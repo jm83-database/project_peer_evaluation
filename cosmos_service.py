@@ -145,3 +145,27 @@ class CosmosService:
         if self.use_cosmos:
             return self._save_cosmos(f"{cohort_id}_evaluations", cohort_id, evaluations, "evaluations")
         return self._save_json(os.path.join(self.data_dir, f'{cohort_id}_evaluations.json'), evaluations)
+
+    # ========== DELETE COHORT DATA ==========
+
+    def delete_cohort_data(self, cohort_id: str) -> bool:
+        doc_ids = [
+            f"{cohort_id}_students",
+            f"{cohort_id}_projects",
+            f"{cohort_id}_evaluations",
+        ]
+        if self.use_cosmos:
+            for doc_id in doc_ids:
+                try:
+                    self.container.delete_item(item=doc_id, partition_key=cohort_id)
+                except Exception:
+                    pass
+        else:
+            for doc_id in doc_ids:
+                filepath = os.path.join(self.data_dir, f'{doc_id}.json')
+                try:
+                    if os.path.exists(filepath):
+                        os.remove(filepath)
+                except Exception as e:
+                    print(f"JSON delete error ({filepath}): {e}")
+        return True

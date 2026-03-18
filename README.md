@@ -20,7 +20,7 @@
 - 다음 날 자동으로 새 평가 폼 제공 (별도 초기화 불필요)
 
 ### 관리자
-- **과정 관리**: 코호트 추가/비활성화, `students.json` 업로드, 과정별 등록 학생 수 확인
+- **과정 관리**: 코호트 추가/비활성화/삭제, `students.json` 업로드, 과정별 등록 학생 수 확인
 - **프로젝트 관리**: 프로젝트 생성, 팀 구성 (드래그앤드롭 + 균등 배분)
 - **대시보드**: 일간/주간/월간 뷰 전환, 제출 현황 도넛 차트, 팀별/학생별 평균 바 차트, 기간별 추세 라인 차트, 학생 상세 일별 추이, CSV 다운로드
 - 대시보드에서 **평가자별 상세 점수 열람 가능** (학생 간에는 익명)
@@ -309,6 +309,7 @@ az webapp up \
 | `POST` | `/api/cohorts` | admin | 코호트 생성 | `{cohort_id, name}` |
 | `PUT` | `/api/cohorts/<cohort_id>` | admin | 코호트 수정 | `{name?, active?}` |
 | `DELETE` | `/api/cohorts/<cohort_id>` | admin | 코호트 비활성화 | - |
+| `DELETE` | `/api/cohorts/<cohort_id>?permanent=true` | admin | 코호트 및 모든 데이터 영구 삭제 | - |
 
 ### 학생 (Students)
 
