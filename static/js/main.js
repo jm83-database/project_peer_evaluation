@@ -758,7 +758,7 @@ function CohortManagement({ cohorts, refresh, showToast }) {
                         ))}
                     </select>
                     <input ref={fileRef} type="file" accept=".json" className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
-                    <p className="text-xs text-gray-400">students.json 형식: [{"id": 1, "name": "이름", "password": "1234"}, ...]</p>
+                    <p className="text-xs text-gray-400">{'students.json 형식: [{"id": 1, "name": "이름", "password": "1234"}, ...]'}</p>
                     <button onClick={handleUpload} className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
                         업로드
                     </button>
