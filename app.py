@@ -92,6 +92,16 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/api/server-time', methods=['GET'])
+def server_time():
+    now = get_kst_now()
+    return jsonify({
+        'datetime': now.strftime('%Y-%m-%d %H:%M:%S'),
+        'date': now.strftime('%Y-%m-%d'),
+        'time': now.strftime('%H:%M')
+    })
+
+
 # ========== AUTH API ==========
 
 @app.route('/api/auth/login', methods=['POST'])

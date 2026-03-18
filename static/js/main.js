@@ -14,6 +14,18 @@ const api = async (url, options = {}) => {
     return res.json();
 };
 
+// ========== Server Time Hook ==========
+function useServerTime() {
+    const [serverTime, setServerTime] = useState('');
+    useEffect(() => {
+        const fetchTime = () => api('/api/server-time').then(d => setServerTime(d.datetime)).catch(() => {});
+        fetchTime();
+        const timer = setInterval(fetchTime, 60000);
+        return () => clearInterval(timer);
+    }, []);
+    return serverTime;
+}
+
 // ========== Toast Component ==========
 function Toast({ message, type, onClose }) {
     useEffect(() => {
@@ -206,6 +218,7 @@ function LoginPage({ onLogin, onAdminLogin, showToast }) {
     const [showAdmin, setShowAdmin] = useState(false);
     const [adminPw, setAdminPw] = useState('');
     const [showHelp, setShowHelp] = useState(false);
+    const serverTime = useServerTime();
 
     const handleLogin = async () => {
         if (!name || !password) {
@@ -307,6 +320,9 @@ function LoginPage({ onLogin, onAdminLogin, showToast }) {
                         </button>
                     </div>
                 )}
+                {serverTime && (
+                    <p className="text-center text-xs text-gray-400 mt-4">서버 시간 (KST): {serverTime}</p>
+                )}
             </div>
             <HelpButton onClick={() => setShowHelp(true)} />
             {showHelp && <StudentHelpModal onClose={() => setShowHelp(false)} />}
@@ -327,6 +343,7 @@ function StudentView({ studentInfo, onLogout, showToast }) {
     const [submittedScores, setSubmittedScores] = useState([]);
     const [showHelp, setShowHelp] = useState(false);
     const countdownRef = useRef(null);
+    const serverTime = useServerTime();
 
     useEffect(() => { loadTeamAndEval(); return () => clearInterval(countdownRef.current); }, []);
 
@@ -511,7 +528,10 @@ function StudentView({ studentInfo, onLogout, showToast }) {
                         </span>
                     )}
                 </div>
-                <button onClick={onLogout} className="text-indigo-200 hover:text-white text-sm">로그아웃</button>
+                <div className="flex items-center gap-3">
+                    {serverTime && <span className="text-indigo-300 text-xs">{serverTime}</span>}
+                    <button onClick={onLogout} className="text-indigo-200 hover:text-white text-sm">로그아웃</button>
+                </div>
             </div>
 
             <div className="container mx-auto p-4 max-w-2xl">
@@ -537,6 +557,7 @@ function AdminView({ onLogout, showToast }) {
     const [cohorts, setCohorts] = useState([]);
     const [selectedCohort, setSelectedCohort] = useState('');
     const [showHelp, setShowHelp] = useState(false);
+    const serverTime = useServerTime();
 
     useEffect(() => {
         api('/api/cohorts').then(data => {
@@ -576,7 +597,10 @@ function AdminView({ onLogout, showToast }) {
                             </select>
                         )}
                     </div>
-                    <button onClick={onLogout} className="text-indigo-300 hover:text-white text-sm">로그아웃</button>
+                    <div className="flex items-center gap-3">
+                        {serverTime && <span className="text-indigo-300 text-xs">{serverTime}</span>}
+                        <button onClick={onLogout} className="text-indigo-300 hover:text-white text-sm">로그아웃</button>
+                    </div>
                 </div>
             </div>
 
