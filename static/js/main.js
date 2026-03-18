@@ -102,7 +102,9 @@ function StudentHelpModal({ onClose }) {
                         <h3 className="font-semibold text-green-700 mb-2">참고 사항</h3>
                         <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
                             <li>평가는 <strong>익명</strong>으로 처리됩니다. 누가 평가했는지 다른 학생에게 공개되지 않습니다.</li>
-                            <li>매일 1회 평가를 제출하며, 당일 내 수정이 가능합니다.</li>
+                            <li>매일 1회 평가를 제출하며, <strong>제출 후에는 수정할 수 없습니다.</strong></li>
+                            <li>제출 직후 5초간 결과가 표시된 후 <strong>자동으로 가려집니다.</strong></li>
+                            <li>재로그인해도 이전 평가 내용을 확인할 수 없습니다.</li>
                             <li>솔직하고 공정하게 평가해주세요.</li>
                         </ul>
                     </div>
@@ -339,14 +341,20 @@ function LoginPage({ onLogin, onAdminLogin, showToast }) {
 }
 
 // ========== STUDENT VIEW ==========
+const RESULT_DISPLAY_SECONDS = 5;
+
 function StudentView({ studentInfo, onLogout, showToast }) {
     const [teamInfo, setTeamInfo] = useState(null);
     const [scores, setScores] = useState({});
     const [loading, setLoading] = useState(true);
-    const [submitted, setSubmitted] = useState(false);
+    const [hasSubmitted, setHasSubmitted] = useState(false);
+    const [justSubmitted, setJustSubmitted] = useState(false);
+    const [countdown, setCountdown] = useState(0);
+    const [submittedScores, setSubmittedScores] = useState([]);
     const [showHelp, setShowHelp] = useState(false);
+    const countdownRef = useRef(null);
 
-    useEffect(() => { loadTeamAndEval(); }, []);
+    useEffect(() => { loadTeamAndEval(); return () => clearInterval(countdownRef.current); }, []);
 
     const loadTeamAndEval = async () => {
         setLoading(true);
@@ -355,17 +363,8 @@ function StudentView({ studentInfo, onLogout, showToast }) {
 
         if (team.success && team.members.length > 0) {
             const today = await api('/api/evaluation/today');
-            if (today.evaluation) {
-                const existing = {};
-                today.evaluation.evaluations.forEach(ev => {
-                    existing[ev.target_id] = {
-                        meeting_attendance: ev.meeting_attendance,
-                        contribution: ev.contribution,
-                        repeated_absence: ev.repeated_absence
-                    };
-                });
-                setScores(existing);
-                setSubmitted(true);
+            if (today.has_submitted) {
+                setHasSubmitted(true);
             } else {
                 const initial = {};
                 team.members.forEach(m => {
@@ -384,6 +383,21 @@ function StudentView({ studentInfo, onLogout, showToast }) {
         }));
     };
 
+    const startCountdown = () => {
+        setCountdown(RESULT_DISPLAY_SECONDS);
+        countdownRef.current = setInterval(() => {
+            setCountdown(prev => {
+                if (prev <= 1) {
+                    clearInterval(countdownRef.current);
+                    setJustSubmitted(false);
+                    setSubmittedScores([]);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    };
+
     const handleSubmit = async () => {
         const evaluations = Object.entries(scores).map(([targetId, s]) => ({
             target_id: parseInt(targetId),
@@ -398,8 +412,22 @@ function StudentView({ studentInfo, onLogout, showToast }) {
         });
 
         if (res.success) {
-            showToast(submitted ? '평가가 수정되었습니다.' : '평가가 제출되었습니다.', 'success');
-            setSubmitted(true);
+            // Save submitted scores temporarily for brief display
+            const memberMap = {};
+            teamInfo.members.forEach(m => { memberMap[m.id] = m.name; });
+            const display = evaluations.map(ev => ({
+                name: memberMap[ev.target_id] || '',
+                meeting_attendance: ev.meeting_attendance,
+                contribution: ev.contribution,
+                repeated_absence: ev.repeated_absence
+            }));
+
+            setSubmittedScores(display);
+            setHasSubmitted(true);
+            setJustSubmitted(true);
+            setScores({});
+            showToast('평가가 제출되었습니다.', 'success');
+            startCountdown();
         } else {
             showToast(res.message, 'error');
         }
@@ -410,6 +438,92 @@ function StudentView({ studentInfo, onLogout, showToast }) {
             <div className="text-gray-500 text-lg">로딩 중...</div>
         </div>;
     }
+
+    // Already submitted view
+    const renderSubmittedView = () => (
+        <div className="space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-xl p-8 text-center">
+                <div className="text-5xl mb-4">&#10003;</div>
+                <h2 className="text-xl font-bold text-green-800 mb-2">오늘의 평가를 완료했습니다</h2>
+                <p className="text-green-600">평가해주셔서 감사합니다. 내일 다시 평가해주세요.</p>
+            </div>
+
+            {/* Brief result display with countdown */}
+            {justSubmitted && submittedScores.length > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-5">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-blue-800">제출된 평가</h3>
+                        <span className="text-sm text-blue-500 font-mono">
+                            {countdown}초 후 결과가 가려집니다
+                        </span>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="w-full bg-blue-200 rounded-full h-1.5 mb-4">
+                        <div
+                            className="bg-blue-600 h-1.5 rounded-full transition-all duration-1000"
+                            style={{width: `${(countdown / RESULT_DISPLAY_SECONDS) * 100}%`}}
+                        ></div>
+                    </div>
+                    <div className="space-y-2">
+                        {submittedScores.map((s, i) => (
+                            <div key={i} className="flex items-center justify-between bg-white rounded-lg px-4 py-2 text-sm">
+                                <span className="font-medium">{s.name}</span>
+                                <div className="flex gap-3 text-gray-600">
+                                    <span>회의 <strong>{s.meeting_attendance}</strong></span>
+                                    <span>기여 <strong>{s.contribution}</strong></span>
+                                    <span>성실 <strong>{s.repeated_absence}</strong></span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+
+    // Evaluation form view
+    const renderEvalForm = () => (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg font-bold text-gray-800">오늘의 팀원 평가</h2>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+                각 항목을 1~5점으로 평가해주세요. (1=매우 부족, 5=매우 우수)
+                <br/>
+                <span className="text-red-500 font-medium">제출 후에는 수정할 수 없습니다. 신중하게 평가해주세요.</span>
+            </p>
+
+            {teamInfo.members.map(member => (
+                <div key={member.id} className="bg-white rounded-xl shadow-sm border p-5 card-hover">
+                    <h3 className="font-semibold text-gray-800 mb-3 text-lg">{member.name}</h3>
+                    <div className="space-y-2">
+                        <StarRating
+                            label="회의 참석"
+                            value={scores[member.id]?.meeting_attendance || 3}
+                            onChange={v => updateScore(member.id, 'meeting_attendance', v)}
+                        />
+                        <StarRating
+                            label="실질 기여"
+                            value={scores[member.id]?.contribution || 3}
+                            onChange={v => updateScore(member.id, 'contribution', v)}
+                        />
+                        <StarRating
+                            label="참여 성실"
+                            value={scores[member.id]?.repeated_absence || 5}
+                            onChange={v => updateScore(member.id, 'repeated_absence', v)}
+                        />
+                    </div>
+                </div>
+            ))}
+
+            <button
+                onClick={handleSubmit}
+                className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition text-lg"
+            >
+                평가 제출하기
+            </button>
+        </div>
+    );
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -435,49 +549,7 @@ function StudentView({ studentInfo, onLogout, showToast }) {
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
                         <p className="text-yellow-800">팀원이 없습니다.</p>
                     </div>
-                ) : (
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <h2 className="text-lg font-bold text-gray-800">오늘의 팀원 평가</h2>
-                            {submitted && (
-                                <span className="bg-green-100 text-green-700 text-sm px-3 py-1 rounded-full">제출 완료</span>
-                            )}
-                        </div>
-                        <p className="text-sm text-gray-500 mb-4">
-                            각 항목을 1~5점으로 평가해주세요. (1=매우 부족, 5=매우 우수)
-                        </p>
-
-                        {teamInfo.members.map(member => (
-                            <div key={member.id} className="bg-white rounded-xl shadow-sm border p-5 card-hover">
-                                <h3 className="font-semibold text-gray-800 mb-3 text-lg">{member.name}</h3>
-                                <div className="space-y-2">
-                                    <StarRating
-                                        label="회의 참석"
-                                        value={scores[member.id]?.meeting_attendance || 3}
-                                        onChange={v => updateScore(member.id, 'meeting_attendance', v)}
-                                    />
-                                    <StarRating
-                                        label="실질 기여"
-                                        value={scores[member.id]?.contribution || 3}
-                                        onChange={v => updateScore(member.id, 'contribution', v)}
-                                    />
-                                    <StarRating
-                                        label="참여 성실"
-                                        value={scores[member.id]?.repeated_absence || 5}
-                                        onChange={v => updateScore(member.id, 'repeated_absence', v)}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-
-                        <button
-                            onClick={handleSubmit}
-                            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition text-lg"
-                        >
-                            {submitted ? '평가 수정하기' : '평가 제출하기'}
-                        </button>
-                    </div>
-                )}
+                ) : hasSubmitted ? renderSubmittedView() : renderEvalForm()}
             </div>
             <HelpButton onClick={() => setShowHelp(true)} />
             {showHelp && <StudentHelpModal onClose={() => setShowHelp(false)} />}

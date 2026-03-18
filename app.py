@@ -391,9 +391,10 @@ def get_today_evaluation():
         None
     )
 
+    # Only return whether submitted, never return scores back to student
     if my_eval:
-        return jsonify({'success': True, 'evaluation': my_eval})
-    return jsonify({'success': True, 'evaluation': None})
+        return jsonify({'success': True, 'has_submitted': True, 'submitted_at': my_eval.get('submitted_at', '')})
+    return jsonify({'success': True, 'has_submitted': False})
 
 
 @app.route('/api/evaluation/submit', methods=['POST'])
@@ -408,6 +409,15 @@ def submit_evaluation():
 
     if not eval_data:
         return jsonify({'success': False, 'message': '평가 데이터가 없습니다.'})
+
+    # Check if already submitted today (no re-submission allowed)
+    evaluations_check = db.load_evaluations(cohort_id)
+    already_submitted = any(
+        e['evaluator_id'] == student_id and e['date'] == today
+        for e in evaluations_check
+    )
+    if already_submitted:
+        return jsonify({'success': False, 'message': '오늘 이미 평가를 제출하셨습니다.'}), 400
 
     # Validate scores
     for e in eval_data:
@@ -433,12 +443,6 @@ def submit_evaluation():
 
     with data_lock:
         evaluations = db.load_evaluations(cohort_id)
-
-        # Remove existing evaluation for today
-        evaluations = [
-            e for e in evaluations
-            if not (e['evaluator_id'] == student_id and e['date'] == today)
-        ]
 
         evaluations.append({
             'project_id': active_project['project_id'],
