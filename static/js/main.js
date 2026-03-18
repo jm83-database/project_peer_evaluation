@@ -205,6 +205,7 @@ function LoginPage({ onLogin, onAdminLogin, showToast }) {
     const [password, setPassword] = useState('');
     const [showAdmin, setShowAdmin] = useState(false);
     const [adminPw, setAdminPw] = useState('');
+    const [showHelp, setShowHelp] = useState(false);
 
     const handleLogin = async () => {
         if (!name || !password) {
@@ -307,6 +308,8 @@ function LoginPage({ onLogin, onAdminLogin, showToast }) {
                     </div>
                 )}
             </div>
+            <HelpButton onClick={() => setShowHelp(true)} />
+            {showHelp && <StudentHelpModal onClose={() => setShowHelp(false)} />}
         </div>
     );
 }
