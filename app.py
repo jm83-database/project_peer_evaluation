@@ -71,29 +71,42 @@ def index():
 @app.route('/api/auth/login', methods=['POST'])
 def student_login():
     data = request.json
-    cohort_id = data.get('cohort_id', '').strip()
     name = data.get('name', '').strip()
     password = data.get('password', '').strip()
 
-    if not all([cohort_id, name, password]):
-        return jsonify({'success': False, 'message': '모든 필드를 입력해주세요.'})
+    if not name or not password:
+        return jsonify({'success': False, 'message': '이름과 비밀번호를 입력해주세요.'})
 
-    students = db.load_students(cohort_id)
-    student = next((s for s in students if s['name'] == name), None)
+    # 모든 활성 과정에서 이름+비밀번호 일치 학생 검색
+    cohorts = db.load_cohorts()
+    active_cohorts = [c for c in cohorts if c.get('active', True)]
 
-    if not student or str(student.get('password', '')) != password:
+    found_student = None
+    found_cohort_id = None
+    for cohort in active_cohorts:
+        students = db.load_students(cohort['cohort_id'])
+        student = next(
+            (s for s in students if s['name'] == name and str(s.get('password', '')) == password),
+            None
+        )
+        if student:
+            found_student = student
+            found_cohort_id = cohort['cohort_id']
+            break
+
+    if not found_student:
         return jsonify({'success': False, 'message': '이름 또는 비밀번호가 올바르지 않습니다.'})
 
     session['user_type'] = 'student'
-    session['student_id'] = student['id']
-    session['student_name'] = student['name']
-    session['cohort_id'] = cohort_id
+    session['student_id'] = found_student['id']
+    session['student_name'] = found_student['name']
+    session['cohort_id'] = found_cohort_id
 
     return jsonify({
         'success': True,
-        'student_id': student['id'],
-        'student_name': student['name'],
-        'cohort_id': cohort_id
+        'student_id': found_student['id'],
+        'student_name': found_student['name'],
+        'cohort_id': found_cohort_id
     })
 
 
@@ -139,6 +152,10 @@ def get_cohorts():
     active_only = request.args.get('active_only', 'false') == 'true'
     if active_only:
         cohorts = [c for c in cohorts if c.get('active', True)]
+    # 각 과정의 학생 수 포함
+    for c in cohorts:
+        students = db.load_students(c['cohort_id'])
+        c['student_count'] = len(students)
     return jsonify(cohorts)
 
 

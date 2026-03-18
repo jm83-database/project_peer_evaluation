@@ -200,35 +200,19 @@ function AdminHelpModal({ onClose }) {
 
 // ========== LOGIN PAGE ==========
 function LoginPage({ onLogin, onAdminLogin, showToast }) {
-    const [cohorts, setCohorts] = useState([]);
-    const [cohortId, setCohortId] = useState('');
-    const [students, setStudents] = useState([]);
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [showAdmin, setShowAdmin] = useState(false);
     const [adminPw, setAdminPw] = useState('');
 
-    useEffect(() => {
-        api('/api/cohorts?active_only=true').then(data => {
-            setCohorts(data);
-            if (data.length > 0) setCohortId(data[0].cohort_id);
-        });
-    }, []);
-
-    useEffect(() => {
-        if (cohortId) {
-            api(`/api/cohorts/${cohortId}/students/names`).then(setStudents);
-        }
-    }, [cohortId]);
-
     const handleLogin = async () => {
-        if (!cohortId || !name || !password) {
-            showToast('모든 필드를 입력해주세요.', 'error');
+        if (!name || !password) {
+            showToast('이름과 비밀번호를 입력해주세요.', 'error');
             return;
         }
         const res = await api('/api/auth/login', {
             method: 'POST',
-            body: { cohort_id: cohortId, name, password }
+            body: { name, password }
         });
         if (res.success) {
             onLogin(res);
@@ -259,41 +243,27 @@ function LoginPage({ onLogin, onAdminLogin, showToast }) {
                 {!showAdmin ? (
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">교육 과정</label>
-                            <select
-                                className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                value={cohortId}
-                                onChange={e => setCohortId(e.target.value)}
-                            >
-                                {cohorts.length === 0 && <option value="">등록된 과정이 없습니다</option>}
-                                {cohorts.map(c => (
-                                    <option key={c.cohort_id} value={c.cohort_id}>{c.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">이름</label>
-                            <select
+                            <input
+                                type="text"
                                 className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 value={name}
                                 onChange={e => setName(e.target.value)}
-                            >
-                                <option value="">이름을 선택하세요</option>
-                                {students.map(s => (
-                                    <option key={s.id} value={s.name}>{s.name}</option>
-                                ))}
-                            </select>
+                                onKeyDown={e => e.key === 'Enter' && document.getElementById('pw-input')?.focus()}
+                                placeholder="이름을 입력하세요"
+                                autoComplete="off"
+                            />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
                             <input
+                                id="pw-input"
                                 type="password"
                                 className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 value={password}
                                 onChange={e => setPassword(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                                placeholder="4자리 비밀번호"
-                                maxLength={4}
+                                placeholder="비밀번호"
                             />
                         </div>
                         <button
@@ -687,6 +657,7 @@ function CohortManagement({ cohorts, refresh, showToast, onSelectCohort }) {
         if (res.success) {
             showToast(`${res.count}명의 학생이 등록되었습니다.`, 'success');
             fileRef.current.value = '';
+            refresh();
             if (onSelectCohort) onSelectCohort(uploadCohort);
         } else {
             showToast(res.message, 'error');
@@ -726,9 +697,14 @@ function CohortManagement({ cohorts, refresh, showToast, onSelectCohort }) {
                     <div className="space-y-2">
                         {cohorts.map(c => (
                             <div key={c.cohort_id} className="flex items-center justify-between bg-gray-50 rounded-lg px-4 py-3">
-                                <div>
-                                    <span className="font-semibold text-indigo-700 mr-2">{c.cohort_id}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-indigo-700">{c.cohort_id}</span>
                                     <span className="text-gray-700">{c.name}</span>
+                                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                        c.student_count > 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-gray-100 text-gray-400'
+                                    }`}>
+                                        {c.student_count > 0 ? `${c.student_count}명` : '미등록'}
+                                    </span>
                                 </div>
                                 <button
                                     onClick={() => toggleActive(c)}
