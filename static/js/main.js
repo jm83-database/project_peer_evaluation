@@ -634,7 +634,7 @@ function AdminView({ onLogout, showToast }) {
                     <ProjectManagement cohortId={selectedCohort} showToast={showToast} />
                 )}
                 {activeTab === 'cohorts' && (
-                    <CohortManagement cohorts={cohorts} refresh={refreshCohorts} showToast={showToast} />
+                    <CohortManagement cohorts={cohorts} refresh={refreshCohorts} showToast={showToast} onSelectCohort={setSelectedCohort} />
                 )}
             </div>
             <HelpButton onClick={() => setShowHelp(true)} />
@@ -644,7 +644,7 @@ function AdminView({ onLogout, showToast }) {
 }
 
 // ========== COHORT MANAGEMENT ==========
-function CohortManagement({ cohorts, refresh, showToast }) {
+function CohortManagement({ cohorts, refresh, showToast, onSelectCohort }) {
     const [newId, setNewId] = useState('');
     const [newName, setNewName] = useState('');
     const [uploadCohort, setUploadCohort] = useState('');
@@ -687,6 +687,7 @@ function CohortManagement({ cohorts, refresh, showToast }) {
         if (res.success) {
             showToast(`${res.count}명의 학생이 등록되었습니다.`, 'success');
             fileRef.current.value = '';
+            if (onSelectCohort) onSelectCohort(uploadCohort);
         } else {
             showToast(res.message, 'error');
         }
