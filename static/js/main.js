@@ -87,7 +87,7 @@ function Toast({ message, type, onClose }) {
 function StarRating({ value, onChange, label }) {
     return (
         <div className="flex items-center gap-1">
-            <span className="text-sm text-gray-600 w-20 flex-shrink-0">{label}</span>
+            <span className="text-sm text-gray-600 w-36 flex-shrink-0">{label}</span>
             <div className="flex gap-0.5">
                 {[1, 2, 3, 4, 5].map(star => (
                     <span
@@ -144,15 +144,15 @@ function StudentHelpModal({ onClose }) {
                         <h3 className="font-semibold text-amber-700 mb-2">평가 항목 설명</h3>
                         <div className="space-y-2 text-sm text-gray-700">
                             <div className="flex gap-2">
-                                <span className="font-semibold text-amber-600 w-20 flex-shrink-0">회의 참석</span>
+                                <span className="font-semibold text-amber-600 w-36 flex-shrink-0">회의 참석</span>
                                 <span>팀 회의에 참석했는지 평가합니다. 5=매번 참석, 1=거의 불참</span>
                             </div>
                             <div className="flex gap-2">
-                                <span className="font-semibold text-amber-600 w-20 flex-shrink-0">담당역할 이행정도</span>
+                                <span className="font-semibold text-amber-600 w-36 flex-shrink-0">담당역할 이행정도</span>
                                 <span>프로젝트에 실질적으로 기여했는지 평가합니다. 5=매우 기여, 1=기여 없음</span>
                             </div>
                             <div className="flex gap-2">
-                                <span className="font-semibold text-amber-600 w-20 flex-shrink-0">소통 및 협업 태도</span>
+                                <span className="font-semibold text-amber-600 w-36 flex-shrink-0">소통 및 협업 태도</span>
                                 <span>전반적인 참여 성실도를 평가합니다. 5=매우 성실, 1=반복적 미참여</span>
                             </div>
                         </div>
