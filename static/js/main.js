@@ -148,11 +148,11 @@ function StudentHelpModal({ onClose }) {
                                 <span>팀 회의에 참석했는지 평가합니다. 5=매번 참석, 1=거의 불참</span>
                             </div>
                             <div className="flex gap-2">
-                                <span className="font-semibold text-amber-600 w-20 flex-shrink-0">실질 기여</span>
+                                <span className="font-semibold text-amber-600 w-20 flex-shrink-0">담당역할 이행정도</span>
                                 <span>프로젝트에 실질적으로 기여했는지 평가합니다. 5=매우 기여, 1=기여 없음</span>
                             </div>
                             <div className="flex gap-2">
-                                <span className="font-semibold text-amber-600 w-20 flex-shrink-0">참여 성실</span>
+                                <span className="font-semibold text-amber-600 w-20 flex-shrink-0">소통 및 협업 태도</span>
                                 <span>전반적인 참여 성실도를 평가합니다. 5=매우 성실, 1=반복적 미참여</span>
                             </div>
                         </div>
@@ -550,12 +550,12 @@ function StudentView({ studentInfo, onLogout, showToast }) {
                             onChange={v => updateScore(member.id, 'meeting_attendance', v)}
                         />
                         <StarRating
-                            label="실질 기여"
+                            label="담당 역할 이행정도"
                             value={scores[member.id]?.contribution || 3}
                             onChange={v => updateScore(member.id, 'contribution', v)}
                         />
                         <StarRating
-                            label="참여 성실"
+                            label="소통 및 협업 태도"
                             value={scores[member.id]?.repeated_absence || 5}
                             onChange={v => updateScore(member.id, 'repeated_absence', v)}
                         />
@@ -1381,8 +1381,8 @@ function AdminDashboard({ cohortId, showToast }) {
                     labels: teamSummary.map(t => t.team_name),
                     datasets: [
                         { label: '회의 참석', data: teamSummary.map(t => t.meeting_attendance_avg), backgroundColor: '#6366f1' },
-                        { label: '실질 기여', data: teamSummary.map(t => t.contribution_avg), backgroundColor: '#8b5cf6' },
-                        { label: '참여 성실', data: teamSummary.map(t => t.repeated_absence_avg), backgroundColor: '#a78bfa' }
+                        { label: '담당 역할 이행정도', data: teamSummary.map(t => t.contribution_avg), backgroundColor: '#8b5cf6' },
+                        { label: '소통 및 협업 태도', data: teamSummary.map(t => t.repeated_absence_avg), backgroundColor: '#a78bfa' }
                     ]
                 },
                 options: {
@@ -1402,8 +1402,8 @@ function AdminDashboard({ cohortId, showToast }) {
                     labels: trendData.map(t => t.date.slice(5)),
                     datasets: [
                         { label: '회의 참석', data: trendData.map(t => t.meeting_attendance_avg), borderColor: '#6366f1', backgroundColor: '#6366f120', tension: 0.3, fill: false, pointRadius: 3 },
-                        { label: '실질 기여', data: trendData.map(t => t.contribution_avg), borderColor: '#8b5cf6', backgroundColor: '#8b5cf620', tension: 0.3, fill: false, pointRadius: 3 },
-                        { label: '참여 성실', data: trendData.map(t => t.repeated_absence_avg), borderColor: '#a78bfa', backgroundColor: '#a78bfa20', tension: 0.3, fill: false, pointRadius: 3 },
+                        { label: '담당 역할 이행정도', data: trendData.map(t => t.contribution_avg), borderColor: '#8b5cf6', backgroundColor: '#8b5cf620', tension: 0.3, fill: false, pointRadius: 3 },
+                        { label: '소통 및 협업 태도', data: trendData.map(t => t.repeated_absence_avg), borderColor: '#a78bfa', backgroundColor: '#a78bfa20', tension: 0.3, fill: false, pointRadius: 3 },
                         { label: '종합', data: trendData.map(t => t.overall_avg), borderColor: '#ef4444', backgroundColor: '#ef444420', tension: 0.3, fill: false, pointRadius: 3, borderDash: [5, 5] }
                     ]
                 },
@@ -1436,8 +1436,8 @@ function AdminDashboard({ cohortId, showToast }) {
                     labels: summary.map(s => s.student_name),
                     datasets: [
                         { label: '회의 참석', data: summary.map(s => s.meeting_attendance_avg), backgroundColor: '#6366f1' },
-                        { label: '실질 기여', data: summary.map(s => s.contribution_avg), backgroundColor: '#8b5cf6' },
-                        { label: '참여 성실', data: summary.map(s => s.repeated_absence_avg), backgroundColor: '#a78bfa' }
+                        { label: '담당 역할 이행정도', data: summary.map(s => s.contribution_avg), backgroundColor: '#8b5cf6' },
+                        { label: '소통 및 협업 태도', data: summary.map(s => s.repeated_absence_avg), backgroundColor: '#a78bfa' }
                     ]
                 },
                 options: {
@@ -1546,8 +1546,8 @@ function AdminDashboard({ cohortId, showToast }) {
                         </div>
                         <div className="text-xs text-gray-400 space-y-1 mt-2">
                             <div className="flex justify-between"><span>회의 참석</span><span>{team.meeting_attendance_avg}</span></div>
-                            <div className="flex justify-between"><span>실질 기여</span><span>{team.contribution_avg}</span></div>
-                            <div className="flex justify-between"><span>참여 성실</span><span>{team.repeated_absence_avg}</span></div>
+                            <div className="flex justify-between"><span>담당 역할 이행정도</span><span>{team.contribution_avg}</span></div>
+                            <div className="flex justify-between"><span>소통 및 협업 태도</span><span>{team.repeated_absence_avg}</span></div>
                         </div>
                         <div className="text-xs text-gray-400 mt-2">{team.member_count}명 | 평가 {team.eval_count}건</div>
                     </div>
@@ -1589,8 +1589,8 @@ function AdminDashboard({ cohortId, showToast }) {
                             <tr>
                                 <th className="px-4 py-3 text-left">학생</th>
                                 <th className="px-4 py-3 text-center">회의 참석</th>
-                                <th className="px-4 py-3 text-center">실질 기여</th>
-                                <th className="px-4 py-3 text-center">참여 성실</th>
+                                <th className="px-4 py-3 text-center">담당 역할 이행정도</th>
+                                <th className="px-4 py-3 text-center">소통 및 협업 태도</th>
                                 <th className="px-4 py-3 text-center">종합</th>
                                 <th className="px-4 py-3 text-center">평가 수</th>
                                 <th className="px-4 py-3 text-center">상세</th>
@@ -1638,8 +1638,8 @@ function StudentDetailModal({ data, onClose }) {
                     labels: data.trend.map(t => t.date),
                     datasets: [
                         { label: '회의 참석', data: data.trend.map(t => t.meeting_attendance_avg), borderColor: '#6366f1', tension: 0.3 },
-                        { label: '실질 기여', data: data.trend.map(t => t.contribution_avg), borderColor: '#8b5cf6', tension: 0.3 },
-                        { label: '참여 성실', data: data.trend.map(t => t.repeated_absence_avg), borderColor: '#a78bfa', tension: 0.3 }
+                        { label: '담당 역할 이행정도', data: data.trend.map(t => t.contribution_avg), borderColor: '#8b5cf6', tension: 0.3 },
+                        { label: '소통 및 협업 태도', data: data.trend.map(t => t.repeated_absence_avg), borderColor: '#a78bfa', tension: 0.3 }
                     ]
                 },
                 options: {
