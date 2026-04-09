@@ -2,6 +2,7 @@ from flask import Flask, render_template, jsonify, request, Response, session
 from flask_compress import Compress
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import json
@@ -17,6 +18,7 @@ from cosmos_service import CosmosService
 load_dotenv()
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
 app.config['JSON_AS_ASCII'] = False
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 3600
 app.config['COMPRESS_MIMETYPES'] = [
@@ -104,8 +106,13 @@ def server_time():
 
 # ========== AUTH API ==========
 
+def get_login_name_key():
+    data = request.get_json(silent=True) or {}
+    name = data.get('name', '').strip()
+    return name if name else get_remote_address()
+
 @app.route('/api/auth/login', methods=['POST'])
-@limiter.limit("5/minute")
+@limiter.limit("5/minute", key_func=get_login_name_key)
 def student_login():
     data = request.json
     name = data.get('name', '').strip()
