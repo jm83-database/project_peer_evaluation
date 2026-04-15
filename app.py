@@ -106,17 +106,23 @@ def server_time():
 
 # ========== AUTH API ==========
 
+def normalize_whitespace(text: str) -> str:
+    """문자열의 공백을 정규화: 앞뒤 제거 + 중간 연속 공백을 단일 공백으로 정규화"""
+    if not isinstance(text, str):
+        return text
+    return re.sub(r'\s+', ' ', text).strip()
+
 def get_login_name_key():
     data = request.get_json(silent=True) or {}
-    name = data.get('name', '').strip()
+    name = normalize_whitespace(data.get('name', ''))
     return name if name else get_remote_address()
 
 @app.route('/api/auth/login', methods=['POST'])
 @limiter.limit("5/minute", key_func=get_login_name_key)
 def student_login():
     data = request.json
-    name = data.get('name', '').strip()
-    password = data.get('password', '').strip()
+    name = normalize_whitespace(data.get('name', ''))
+    password = normalize_whitespace(data.get('password', ''))
 
     if not name or not password:
         return jsonify({'success': False, 'message': '이름과 비밀번호를 입력해주세요.'})
@@ -159,7 +165,7 @@ def student_login():
 @limiter.limit("5/minute")
 def admin_login():
     data = request.json
-    password = data.get('password', '')
+    password = normalize_whitespace(data.get('password', ''))
 
     if password != TEACHER_PASSWORD:
         return jsonify({'success': False, 'message': '비밀번호가 올바르지 않습니다.'})
